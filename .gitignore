@@ -1,0 +1,11 @@
+# System
+.DS_Store
+Thumbs.db
+
+# Obsidian session-specific files
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Cache
+.obsidian/.obsidian/
+*.tmp

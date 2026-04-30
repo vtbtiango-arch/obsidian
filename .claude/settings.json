@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p .claude/skills/json-canvas/references)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/kepano/obsidian-skills/main/skills/json-canvas/SKILL.md\" -o .claude/skills/json-canvas/SKILL.md)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/kepano/obsidian-skills/main/skills/json-canvas/references/EXAMPLES.md\" -o .claude/skills/json-canvas/references/EXAMPLES.md)",
+      "Bash(mkdir -p .claude/skills/obsidian-bases/references)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/kepano/obsidian-skills/main/skills/obsidian-bases/SKILL.md\" -o .claude/skills/obsidian-bases/SKILL.md)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/kepano/obsidian-skills/main/skills/obsidian-bases/references/FUNCTIONS_REFERENCE.md\" -o .claude/skills/obsidian-bases/references/FUNCTIONS_REFERENCE.md)",
+      "Bash(rm -rf .claude/skills/json-canvas && echo \"json-canvas uninstalled\")",
+      "PowerShell"
+    ]
+  }
+}

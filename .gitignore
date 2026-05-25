@@ -1,11 +1,26 @@
 # System
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Obsidian session-specific files
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
 
-# Cache
+# Claude / Claudian session files (conflict-prone)
+.claudian/sessions/
+.claude/sessions/
+
+# Cache & trash
 .obsidian/.obsidian/
+.trash/
 *.tmp
+
+# Large media files (use separate storage for these)
+*.mp4
+*.mp3
+*.wav
+*.mov
+*.avi
+*.mkv
+*.flac

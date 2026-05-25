@@ -1,8 +1,8 @@
 {
   "userName": "",
-  "permissionMode": "plan",
-  "model": "qwen3.6-plus",
-  "thinkingBudget": "off",
+  "permissionMode": "normal",
+  "model": "deepseek-v4-pro",
+  "thinkingBudget": "xhigh",
   "effortLevel": "high",
   "serviceTier": "default",
   "enableAutoTitleGeneration": true,
@@ -11,38 +11,17 @@
   "mediaFolder": "",
   "systemPrompt": "",
   "persistentExternalContextPaths": [],
-  "sharedEnvironmentVariables": "ANTHROPIC_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/apps/anthropic\nANTHROPIC_API_KEY=sk-sp-djI.Bfg_XmdoeqcSqxv3CjIowLt77Kqy7c5Ry86MpRSo4n-elSUy_IEtFX4wGg-4v1aOlT7KGt5nayb2R8jAdXKnTw3LnL5YKAMCKC3WIyvKXC2aooimi0T6QWSkVtP_xTtR5kaUA8BliYNLkZuvPxO3GgAmHrEvRcFp7SItvt1wZ0sCTFWjhWg9SCMCe86MU_9e.MEUCIQCjOvvTyCF4NqtIYzVl51DYRTNov2_OAG4b_E6QbEibdwIgabjiX09K4CNsKVxsUWjPI0btZvp2YwBNiWyhp8FZ5L0\nANTHROPIC_MODEL=qwen3.6-plus",
-  "envSnippets": [
-    {
-      "id": "snippet-1777382318918",
-      "name": "QWEN",
-      "description": "",
-      "envVars": "ANTHROPIC_API_KEY=sk-sp-djI.Bfg_XmdoeqcSqxv3CjIowLt77Kqy7c5Ry86MpRSo4n-elSUy_IEtFX4wGg-4v1aOlT7KGt5nayb2R8jAdXKnTw3LnL5YKAMCKC3WIyvKXC2aooimi0T6QWSkVtP_xTtR5kaUA8BliYNLkZuvPxO3GgAmHrEvRcFp7SItvt1wZ0sCTFWjhWg9SCMCe86MU_9e.MEUCIQCjOvvTyCF4NqtIYzVl51DYRTNov2_OAG4b_E6QbEibdwIgabjiX09K4CNsKVxsUWjPI0btZvp2YwBNiWyhp8FZ5L0\nANTHROPIC_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/apps/anthropic\nANTHROPIC_MODEL=qwen3.6-plus",
-      "scope": "provider:claude"
-    },
-    {
-      "id": "snippet-1777382759286",
-      "name": "qwen",
-      "description": "",
-      "envVars": "ANTHROPIC_API_KEY=sk-sp-djI.Bfg_XmdoeqcSqxv3CjIowLt77Kqy7c5Ry86MpRSo4n-elSUy_IEtFX4wGg-4v1aOlT7KGt5nayb2R8jAdXKnTw3LnL5YKAMCKC3WIyvKXC2aooimi0T6QWSkVtP_xTtR5kaUA8BliYNLkZuvPxO3GgAmHrEvRcFp7SItvt1wZ0sCTFWjhWg9SCMCe86MU_9e.MEUCIQCjOvvTyCF4NqtIYzVl51DYRTNov2_OAG4b_E6QbEibdwIgabjiX09K4CNsKVxsUWjPI0btZvp2YwBNiWyhp8FZ5L0\nANTHROPIC_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/apps/anthropic\nANTHROPIC_MODEL=qwen3.6-plus",
-      "scope": "provider:claude"
-    },
-    {
-      "id": "snippet-1777383080568",
-      "name": "w",
-      "description": "",
-      "envVars": "ANTHROPIC_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/apps/anthropic\nANTHROPIC_API_KEY=sk-sp-djI.Bfg_XmdoeqcSqxv3CjIowLt77Kqy7c5Ry86MpRSo4n-elSUy_IEtFX4wGg-4v1aOlT7KGt5nayb2R8jAdXKnTw3LnL5YKAMCKC3WIyvKXC2aooimi0T6QWSkVtP_xTtR5kaUA8BliYNLkZuvPxO3GgAmHrEvRcFp7SItvt1wZ0sCTFWjhWg9SCMCe86MU_9e.MEUCIQCjOvvTyCF4NqtIYzVl51DYRTNov2_OAG4b_E6QbEibdwIgabjiX09K4CNsKVxsUWjPI0btZvp2YwBNiWyhp8FZ5L0\nANTHROPIC_MODEL=qwen3.6-plus",
-      "scope": "provider:claude"
-    }
-  ],
+  "sharedEnvironmentVariables": "ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic\nANTHROPIC_API_KEY=sk-5caa5a94e097499c8947485b6225266c\nANTHROPIC_MODEL=deepseek-v4-pro",
+  "envSnippets": [],
   "customContextLimits": {
-    "qwen3.6-plus": 2000000
+    "qwen3.6-plus": 9000000
   },
   "keyboardNavigation": {
     "scrollUpKey": "w",
     "scrollDownKey": "s",
     "focusInputKey": "i"
   },
+  "requireCommandOrControlEnterToSend": false,
   "locale": "zh-CN",
   "providerConfigs": {
     "claude": {
@@ -50,14 +29,14 @@
       "cliPath": "",
       "cliPathsByHost": {},
       "loadUserSettings": true,
-      "enableChrome": false,
+      "enableChrome": true,
       "enableBangBash": false,
       "enableOpus1M": false,
       "enableSonnet1M": false,
       "customModels": "",
       "lastModel": "haiku",
-      "environmentVariables": "ANTHROPIC_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/apps/anthropic\nANTHROPIC_API_KEY=sk-sp-djI.Bfg_XmdoeqcSqxv3CjIowLt77Kqy7c5Ry86MpRSo4n-elSUy_IEtFX4wGg-4v1aOlT7KGt5nayb2R8jAdXKnTw3LnL5YKAMCKC3WIyvKXC2aooimi0T6QWSkVtP_xTtR5kaUA8BliYNLkZuvPxO3GgAmHrEvRcFp7SItvt1wZ0sCTFWjhWg9SCMCe86MU_9e.MEUCIQCjOvvTyCF4NqtIYzVl51DYRTNov2_OAG4b_E6QbEibdwIgabjiX09K4CNsKVxsUWjPI0btZvp2YwBNiWyhp8FZ5L0\nANTHROPIC_MODEL=qwen3.6-plus",
-      "environmentHash": "ANTHROPIC_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/apps/anthropic|ANTHROPIC_MODEL=qwen3.6-plus"
+      "environmentVariables": "ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic\nANTHROPIC_API_KEY=sk-5caa5a94e097499c8947485b6225266c\nANTHROPIC_MODEL=deepseek-v4-pro",
+      "environmentHash": "ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic|ANTHROPIC_MODEL=deepseek-v4-pro"
     },
     "codex": {
       "enabled": false,
@@ -69,7 +48,7 @@
       "environmentVariables": "",
       "environmentHash": "",
       "installationMethodsByHost": {
-        "yuko": "native-windows"
+        "device:04f7b011-4346-4109-9e12-a291c5114b3b": "native-windows"
       },
       "wslDistroOverridesByHost": {}
     },
@@ -82,27 +61,29 @@
       "modelAliases": {},
       "preferredThinkingByModel": {},
       "selectedMode": "",
+      "thinkingOptionsByModel": {},
       "visibleModels": []
     }
   },
   "settingsProvider": "claude",
   "savedProviderModel": {
-    "claude": "qwen3.6-plus"
+    "claude": "deepseek-v4-pro"
   },
   "savedProviderEffort": {
     "claude": "high"
   },
   "savedProviderServiceTier": {},
   "savedProviderThinkingBudget": {
-    "claude": "off"
+    "claude": "xhigh"
   },
   "savedProviderPermissionMode": {
-    "claude": "plan"
+    "claude": "normal"
   },
   "lastCustomModel": "qwen3.6-plus",
   "maxTabs": 3,
   "tabBarPosition": "input",
   "enableAutoScroll": true,
-  "openInMainTab": false,
+  "deferMathRenderingDuringStreaming": true,
+  "chatViewPlacement": "right-sidebar",
   "hiddenProviderCommands": {}
 }

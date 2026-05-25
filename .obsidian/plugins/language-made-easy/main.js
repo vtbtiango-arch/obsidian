@@ -17654,7 +17654,12 @@ var DEFAULT_SETTINGS = {
   supabaseUrl: typeof process !== "undefined" && "https://yweosazhyczjqdcjmiti.supabase.co" || "",
   supabaseKey: typeof process !== "undefined" && "sb_publishable_SNqHPZuOozsQqfGfuJzZiA_lrlCTHK2" || "",
   // UI Theme
-  uiStyle: "paper-ink"
+  uiStyle: "paper-ink",
+  // STT (Speech-to-Text) subtitle generation
+  subtitleMode: "cc",
+  sttApiKey: "",
+  sttModel: "qwen3-asr-flash",
+  sttLanguage: ""
 };
 
 // src/ui/flashcard-manager-modal.ts
@@ -18332,8 +18337,7 @@ var FlashcardManagerModal = class extends import_obsidian.Modal {
     const csvEsc = (v) => {
       if (v == null) return "";
       const s = String(v).replace(/<[^>]*>/g, "").trim();
-      if (s.includes(",") || s.includes('"') || s.includes("
-")) return '"' + s.replace(/"/g, '""') + '"';
+      if (s.includes(",") || s.includes('"') || s.includes("\n")) return '"' + s.replace(/"/g, '""') + '"';
       return s;
     };
     for (const lang of langs) {
@@ -18346,9 +18350,7 @@ var FlashcardManagerModal = class extends import_obsidian.Modal {
             entry.partOfSpeech ? `[${entry.partOfSpeech}]` : null,
             entry.definition || "",
             entry.contextSnippet ? `例句: ${entry.contextSnippet}` : null
-          ].filter(Boolean).join("
-
-");
+          ].filter(Boolean).join("\n\n");
           const tags = `vocabulary ${lang}`;
           csvRows.push([csvEsc(front), csvEsc(back), csvEsc(tags)]);
         }
@@ -18358,9 +18360,7 @@ var FlashcardManagerModal = class extends import_obsidian.Modal {
       new import_obsidian.Notice("没有可导出的闪卡");
       return;
     }
-    const csvContent = "﻿" + csvRows.map(r => r.join(",")).join("
-") + "
-";
+    const csvContent = "﻿" + csvRows.map(r => r.join(",")).join("\n") + "\n";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -18927,6 +18927,30 @@ var LMESettingTab = class extends import_obsidian4.PluginSettingTab {
         this.showFolderSuggest(contentEl, suggestions);
       }
     }));
+    containerEl.createEl("h3", { text: "\u5B57\u5E55\u83B7\u53D6\u65B9\u5F0F / Subtitle Source" });
+    containerEl.createEl("p", {
+      text: "\u9009\u62E9\u5B57\u5E55\u751F\u6210\u65B9\u5F0F\u3002CC \u6A21\u5F0F\u4F7F\u7528\u89C6\u9891\u539F\u751F\u5B57\u5E55\uFF1BSTT \u6A21\u5F0F\u4F7F\u7528\u8BED\u97F3\u8BC6\u522B\u751F\u6210\u5B57\u5E55\u3002",
+      cls: "lme-settings-hint"
+    });
+    new import_obsidian4.Setting(containerEl).setName("\u5B57\u5E55\u6A21\u5F0F").setDesc("CC = \u539F\u751F\u5B57\u5E55\uFF1BSTT = \u8BED\u97F3\u8BC6\u522B\uFF1BCC\u4F18\u5148 = CC\u5931\u8D25\u540E\u81EA\u52A8\u5207\u6362\u5230STT").addDropdown((drop) => {
+      drop.addOption("cc", "CC \u5B57\u5E55\uFF08\u539F\u751F\uFF09").addOption("stt", "STT \uFF08\u8BED\u97F3\u8BC6\u522B\uFF09").addOption("cc-first", "CC \u4F18\u5148\uFF08\u5931\u8D25\u540E STT \uFF09").setValue(this.plugin.settings.subtitleMode || "cc").onChange(async (v) => {
+        this.plugin.settings.subtitleMode = v;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian4.Setting(containerEl).setName("STT API \u5BC6\u94A5").setDesc("\u963F\u91CC\u4E91 DashScope API Key\uFF0C\u7528\u4E8E qwen3-asr-flash \u8BED\u97F3\u8BC6\u522B").addText((t) => {
+      t.setPlaceholder("sk-...").setValue(this.plugin.settings.sttApiKey || "").onChange(async (v) => {
+        this.plugin.settings.sttApiKey = v.trim();
+        await this.plugin.saveSettings();
+      });
+      t.inputEl.type = "password";
+    });
+    new import_obsidian4.Setting(containerEl).setName("STT \u6A21\u578B\u540D\u79F0").setDesc("\u63A8\u8350 qwen3-asr-flash\uFF08\u652F\u6301\u4E2D\u82F1\u65E5\u7B49\u591A\u8BED\u8A00\u81EA\u52A8\u8BC6\u522B\uFF09").addText((t) => {
+      t.setPlaceholder("qwen3-asr-flash").setValue(this.plugin.settings.sttModel || "").onChange(async (v) => {
+        this.plugin.settings.sttModel = v.trim();
+        await this.plugin.saveSettings();
+      });
+    });
     containerEl.createEl("h3", { text: "AI \u667A\u80FD\u89E3\u6790" });
     containerEl.createEl("p", {
       text: "\u914D\u7F6E\u8DDF\u8BFB\u5DE5\u574A AI \u89E3\u6790\u529F\u80FD\u4F7F\u7528\u7684\u5927\u6A21\u578B\u3002\u652F\u6301 Deepseek \u548C Google Gemini\u3002",
@@ -23716,6 +23740,271 @@ var ShadowingView = class extends import_obsidian12.ItemView {
     }
   }
   // ============================================================
+  // STT (Speech-to-Text) subtitle generation via Whisper API
+  // ============================================================
+  /**
+   * Convert AudioBuffer to 16kHz mono WAV (16-bit PCM).
+   * Returns a Blob ready for upload.
+   */
+  audioBufferToWav(audioBuffer) {
+    const sr = 16000;
+    const numCh = 1;
+    const bitsPerSample = 16;
+    const resampleRatio = audioBuffer.sampleRate / sr;
+    const srcData = audioBuffer.getChannelData(0);
+    const outLen = Math.floor(srcData.length / resampleRatio);
+    const outData = new Float32Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      outData[i] = srcData[Math.floor(i * resampleRatio)];
+    }
+    const bytesPerSample = bitsPerSample / 8;
+    const blockAlign = numCh * bytesPerSample;
+    const dataLen = outLen * blockAlign;
+    const buf = new ArrayBuffer(44 + dataLen);
+    const view = new DataView(buf);
+    const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    writeStr(0, "RIFF");
+    view.setUint32(4, 36 + dataLen, true);
+    writeStr(8, "WAVE");
+    writeStr(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numCh, true);
+    view.setUint32(24, sr, true);
+    view.setUint32(28, sr * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+    writeStr(36, "data");
+    view.setUint32(40, dataLen, true);
+    let offset = 44;
+    for (let i = 0; i < outLen; i++) {
+      const s = Math.max(-1, Math.min(1, outData[i]));
+      view.setInt16(offset, s < 0 ? s * 32768 : s * 32767, true);
+      offset += 2;
+    }
+    return new Blob([buf], { type: "audio/wav" });
+  }
+  /** Convert a chunk of AudioBuffer to WAV (for segmented processing). */
+  audioBufferChunkToWav(audioBuffer, startFrame, endFrame, sr) {
+    const numCh = 1;
+    const bitsPerSample = 16;
+    const numSamples = endFrame - startFrame;
+    const dataLen = numSamples * numCh * (bitsPerSample / 8);
+    const buf = new ArrayBuffer(44 + dataLen);
+    const view = new DataView(buf);
+    const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    writeStr(0, "RIFF");
+    view.setUint32(4, 36 + dataLen, true);
+    writeStr(8, "WAVE");
+    writeStr(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numCh, true);
+    view.setUint32(24, sr, true);
+    view.setUint32(28, sr * numCh * (bitsPerSample / 8), true);
+    view.setUint16(32, numCh * (bitsPerSample / 8), true);
+    view.setUint16(34, bitsPerSample, true);
+    writeStr(36, "data");
+    view.setUint32(40, dataLen, true);
+    const chData = audioBuffer.getChannelData(0);
+    let offset = 44;
+    for (let i = startFrame; i < endFrame; i++) {
+      const s = Math.max(-1, Math.min(1, chData[i]));
+      view.setInt16(offset, s < 0 ? s * 32768 : s * 32767, true);
+      offset += 2;
+    }
+    return new Blob([buf], { type: "audio/wav" });
+  }
+  /**
+   * DashScope Paraformer: upload audio file and get file_id.
+   * Uses DashScope file upload API (not OpenAI-compatible).
+   */
+  /**
+   * Transcribe a single audio chunk via qwen3-asr-flash multimodal conversation API.
+   * Audio is sent as base64 data URI in a single POST request.
+   * Splits the resulting text by sentence-ending punctuation and estimates timestamps.
+   */
+  async transcribeAudioChunk(audioBlob, apiKey, model, chunkDurationSec) {
+    const audioBytes = new Uint8Array(await audioBlob.arrayBuffer());
+    const base64 = btoa(String.fromCharCode(...audioBytes));
+    const audioDataUri = "data:audio/wav;base64," + base64;
+    console.log("[EME] STT sending audio chunk:", audioBytes.length, "bytes, duration:", chunkDurationSec.toFixed(1), "s");
+    const reqBody = JSON.stringify({
+      model: model || "qwen3-asr-flash",
+      messages: [
+        { role: "system", content: [{ text: "" }] },
+        { role: "user", content: [{ audio: audioDataUri }] }
+      ],
+      result_format: "message",
+      asr_options: {
+        enable_lid: true,
+        enable_itn: false
+      }
+    });
+    const resp = await (0, import_obsidian12.requestUrl)({
+      url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + apiKey,
+        "Content-Type": "application/json"
+      },
+      body: reqBody
+    });
+    console.log("[EME] STT response status:", resp.status);
+    if (resp.status >= 400) {
+      new import_obsidian12.Notice("STT 识别失败 (" + resp.status + "): " + resp.text.substring(0, 200));
+      throw new Error("STT API 调用失败 (" + resp.status + "): " + resp.text);
+    }
+    const data = typeof resp.json === "object" ? resp.json : JSON.parse(resp.text);
+    const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    let text = "";
+    if (Array.isArray(content)) {
+      for (const item of content) {
+        if (item.text) text += item.text;
+      }
+    } else if (typeof content === "string") {
+      text = content;
+    }
+    text = text.trim();
+    console.log("[EME] STT result length:", text.length, "chars");
+
+    // Split by sentence-ending punctuation, keeping the punctuation
+    const sentences = text.match(/[^。！？.\n!?]+[。！？.\n!?]+/g) || [text];
+    const filtered = sentences.map(s => s.trim()).filter(s => s.length > 0);
+
+    if (filtered.length === 0) return [];
+
+    // Estimate timestamps based on character count proportion
+    const totalChars = filtered.reduce((sum, s) => sum + s.length, 0);
+    const segments = [];
+    let cumulativeChars = 0;
+    for (const sentence of filtered) {
+      const ratio = sentence.length / totalChars;
+      const estimatedTime = chunkDurationSec * (cumulativeChars / totalChars);
+      segments.push({ startSec: estimatedTime, text: sentence });
+      cumulativeChars += sentence.length;
+    }
+
+    console.log("[EME] STT split into", segments.length, "sentence segments");
+    return segments;
+  }
+  /**
+   * Transcribe audio in chunks via DashScope Paraformer.
+   * Each chunk is processed sequentially through the async task pipeline.
+   */
+  async transcribeAudioInChunks(audioBuffer, apiKey, model) {
+    const sr = 16000;
+    const maxSamplesPerChunk = Math.floor(sr * 120);
+    const totalSamples = audioBuffer.length;
+    const allSegments = [];
+    const numChunks = Math.ceil(totalSamples / maxSamplesPerChunk);
+    let globalTimeOffset = 0;
+    for (let i = 0; i < numChunks; i++) {
+      const startFrame = i * maxSamplesPerChunk;
+      const endFrame = Math.min((i + 1) * maxSamplesPerChunk, totalSamples);
+      const chunkDurationSec = (endFrame - startFrame) / sr;
+      console.log(`[EME] STT chunk ${i + 1}/${numChunks}, duration:`, chunkDurationSec.toFixed(1), "s");
+      const chunkBlob = this.audioBufferChunkToWav(audioBuffer, startFrame, endFrame, sr);
+      new import_obsidian12.Notice(`语音识别中 (${i + 1}/${numChunks})...`);
+      const segments = await this.transcribeAudioChunk(chunkBlob, apiKey, model, chunkDurationSec);
+      for (const seg of segments) {
+        allSegments.push({ startSec: seg.startSec + globalTimeOffset, text: seg.text });
+      }
+      globalTimeOffset += chunkDurationSec;
+    }
+    return allSegments;
+  }
+  /**
+   * Fetch STT subtitles by downloading Bilibili/YouTube video,
+   * extracting audio via Web Audio API, and transcribing via Whisper API.
+   */
+  async fetchSTTSubtitles(bvid, videoId, fullUrl) {
+    const settings = this.plugin.settings;
+    const apiKey = settings.sttApiKey;
+    const model = settings.sttModel || "qwen3-asr-flash";
+    if (!apiKey) {
+      throw new Error("请先在设置中配置 STT API 密钥（阿里云 DashScope Key）");
+    }
+    let videoBuffer = null;
+    let audioBlobUrl = null;
+    try {
+      if (bvid) {
+        const pageNum = fullUrl ? (parseInt((fullUrl.match(/[?&]p=(\d+)/i) || [, 1])[1]) || 1) : 1;
+        const cacheKey = pageNum > 1 ? bvid + "_p" + pageNum : bvid;
+        const cached = await this.readBilibiliCache(cacheKey);
+        if (cached) {
+          console.log("[EME] STT using cached video");
+          videoBuffer = cached;
+        } else {
+          new import_obsidian12.Notice("正在获取B站视频信息...");
+          const infoResp = await fetchWithRetry(() => (0, import_obsidian12.requestUrl)({
+            url: "https://api.bilibili.com/x/web-interface/view?bvid=" + bvid,
+            method: "GET",
+            headers: { "Referer": "https://www.bilibili.com", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
+          }));
+          const infoData = infoResp.json;
+          if (infoData.code !== 0) throw new Error(infoData.message || "B站API返回错误");
+          let cid = infoData.data.cid;
+          const pages = infoData.data.pages || [];
+          if (pageNum > 1 && pages.length >= pageNum) cid = pages[pageNum - 1].cid;
+          new import_obsidian12.Notice("正在下载视频...");
+          const playResp = await fetchWithRetry(() => (0, import_obsidian12.requestUrl)({
+            url: "https://api.bilibili.com/x/player/playurl?bvid=" + bvid + "&cid=" + cid + "&qn=16&fnval=1&fourk=0",
+            method: "GET",
+            headers: { "Referer": "https://www.bilibili.com", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
+          }));
+          const playData = playResp.json;
+          if (playData.code !== 0) throw new Error(playData.message || "无法获取视频地址");
+          const durls = (playData.data || {}).durl || [];
+          if (!durls || durls.length === 0) throw new Error("未获取到视频流地址");
+          const buffers = [];
+          for (const seg of durls) {
+            const segUrl = seg.url || (seg.backup_url && seg.backup_url[0]);
+            if (!segUrl) continue;
+            const segResp = await (0, import_obsidian12.requestUrl)({
+              url: segUrl,
+              method: "GET",
+              headers: { "Referer": "https://www.bilibili.com" }
+            });
+            buffers.push(segResp.body.buffer || new Uint8Array(segResp.body).buffer);
+          }
+          videoBuffer = buffers.reduce((acc, buf) => {
+            const merged = new Uint8Array(acc.length + buf.byteLength);
+            merged.set(new Uint8Array(acc));
+            merged.set(new Uint8Array(buf), acc.length);
+            return merged.buffer;
+          }, new ArrayBuffer(0));
+        }
+        new import_obsidian12.Notice("正在从视频中提取音频...");
+        const videoBlob = new Blob([videoBuffer], { type: "video/mp4" });
+        audioBlobUrl = URL.createObjectURL(videoBlob);
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioData = await videoBlob.arrayBuffer();
+        let audioBuffer;
+        try {
+          audioBuffer = await audioCtx.decodeAudioData(audioData.slice(0));
+        } catch (e) {
+          throw new Error("无法从视频中提取音频: 格式不支持");
+        }
+        const duration = audioBuffer.duration;
+        const totalChunks = Math.ceil((audioBuffer.sampleRate * duration) / (16000 * 120));
+        console.log("[EME] Audio extracted: " + duration.toFixed(1) + "s, " + audioBuffer.sampleRate + "Hz, " + totalChunks + " chunks");
+        new import_obsidian12.Notice("开始语音识别，共 " + totalChunks + " 段，预计需要几分钟...");
+        const segments = await this.transcribeAudioInChunks(audioBuffer, apiKey, model);
+        await audioCtx.close();
+        return segments;
+      }
+      if (videoId) {
+        throw new Error("YouTube STT 暂不支持");
+      }
+    } catch (error) {
+      throw error;
+    } finally {
+      if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+    }
+    return [];
+  }
+  // ============================================================
   // Subtitle Download & Insertion
   // ============================================================
   async fetchAndInsertSubtitles() {
@@ -23727,50 +24016,95 @@ var ShadowingView = class extends import_obsidian12.ItemView {
     const content = await this.app.vault.read(file);
     const biliFullRegex = /(?:https?:\/\/)?(?:www\.)?bilibili\.com\/video\/((?:BV[a-zA-Z0-9]{10})|(?:av[0-9]+))[^\s]*/i;
     const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i;
+    const biliMatch = content.match(biliFullRegex);
+    const ytMatch = content.match(ytRegex);
+    if (!biliMatch && !ytMatch) {
+      new import_obsidian12.Notice("\u672A\u68C0\u6D4B\u5230YouTube\u6216B\u7AD9\u89C6\u9891\u94FE\u63A5\u3002");
+      return;
+    }
+    const mode = this.plugin.settings.subtitleMode || "cc";
     let subtitles = [];
     let videoLineIndex = -1;
     const lines = content.split("\n");
-    const biliMatch = content.match(biliFullRegex);
-    const ytMatch = content.match(ytRegex);
-    try {
-      if (biliMatch) {
-        const bvid = biliMatch[1];
-        const fullUrl = biliMatch[0];
-        videoLineIndex = lines.findIndex((line) => biliFullRegex.test(line));
-        new import_obsidian12.Notice("\u6B63\u5728\u4E0B\u8F7DB\u7AD9\u5B57\u5E55...");
-        subtitles = await this.fetchBilibiliSubtitles(bvid, fullUrl);
-      } else if (ytMatch) {
-        const videoId = ytMatch[1];
-        videoLineIndex = lines.findIndex((line) => ytRegex.test(line));
-        new import_obsidian12.Notice("\u6B63\u5728\u4E0B\u8F7DYouTube\u5B57\u5E55...");
-        subtitles = await this.fetchYouTubeSubtitles(videoId);
-      } else {
-        new import_obsidian12.Notice("\u672A\u68C0\u6D4B\u5230YouTube\u6216B\u7AD9\u89C6\u9891\u94FE\u63A5\u3002");
+    // CC mode: try CC first, optionally fall back to STT
+    if (mode === "cc" || mode === "cc-first") {
+      try {
+        if (biliMatch) {
+          const bvid = biliMatch[1];
+          const fullUrl = biliMatch[0];
+          videoLineIndex = lines.findIndex((line) => biliFullRegex.test(line));
+          new import_obsidian12.Notice("\u6B63\u5728\u4E0B\u8F7DB\u7AD9\u5B57\u5E55...");
+          subtitles = await this.fetchBilibiliSubtitles(bvid, fullUrl);
+        } else if (ytMatch) {
+          const videoId = ytMatch[1];
+          videoLineIndex = lines.findIndex((line) => ytRegex.test(line));
+          new import_obsidian12.Notice("\u6B63\u5728\u4E0B\u8F7DYouTube\u5B57\u5E55...");
+          subtitles = await this.fetchYouTubeSubtitles(videoId);
+        }
+      } catch (e) {
+        console.log("[EME] CC subtitle fetch failed:", e.message);
+        if (mode === "cc-first") {
+          new import_obsidian12.Notice("CC\u5B57\u5E55\u4E0D\u53EF\u7528\uFF0C\u5C1D\u8BD5 STT \u8BED\u97F3\u8BC6\u522B...");
+        }
+      }
+      if (subtitles.length > 0) {
+        const merged = this.mergeSubtitleBlocks(subtitles);
+        console.log(`[EME] CC Subtitles: ${subtitles.length} raw \u2192 ${merged.length} merged`);
+        const formatted = merged.map((s) => {
+          const totalSec = Math.floor(s.startSec);
+          const hours = Math.floor(totalSec / 3600);
+          const minutes = Math.floor(totalSec % 3600 / 60);
+          const seconds = totalSec % 60;
+          if (hours > 0) {
+            return `[${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}] ${s.text}`;
+          }
+          return `[${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}] ${s.text}`;
+        }).join("\n");
+        await this.insertSubtitlesIntoNote(file, content, formatted, videoLineIndex);
+        new import_obsidian12.Notice(`\u5DF2\u4E0B\u8F7D ${subtitles.length} \u6761\u5B57\u5E55\uFF08\u5408\u5E76\u4E3A ${merged.length} \u6BB5\uFF09`);
         return;
       }
-    } catch (error) {
-      console.error("[EME] Subtitle fetch failed:", error);
-      new import_obsidian12.Notice(error instanceof Error ? error.message : "\u5B57\u5E55\u4E0B\u8F7D\u5931\u8D25");
+    }
+    // STT mode (pure STT or CC fallback)
+    if (mode === "stt" || (mode === "cc-first" && subtitles.length === 0)) {
+      const bvid = biliMatch ? biliMatch[1] : null;
+      const videoId = ytMatch ? ytMatch[1] : null;
+      if (biliMatch) {
+        videoLineIndex = lines.findIndex((line) => biliFullRegex.test(line));
+      } else {
+        videoLineIndex = lines.findIndex((line) => ytRegex.test(line));
+      }
+      try {
+        new import_obsidian12.Notice("\u6B63\u5728\u8FDB\u884C\u8BED\u97F3\u8BC6\u522B (STT)...");
+        subtitles = await this.fetchSTTSubtitles(bvid, videoId, biliMatch ? biliMatch[0] : null);
+      } catch (error) {
+        console.error("[EME] STT failed:", error);
+        new import_obsidian12.Notice(error instanceof Error ? error.message : "\u8BED\u97F3\u8BC6\u522B\u5931\u8D25");
+        return;
+      }
+      if (subtitles.length === 0) {
+        new import_obsidian12.Notice("\u8BED\u97F3\u8BC6\u522B\u672A\u83B7\u53D6\u5230\u5B57\u5E55\u3002");
+        return;
+      }
+      const merged = this.mergeSubtitleBlocks(subtitles);
+      console.log(`[EME] STT Subtitles: ${subtitles.length} raw \u2192 ${merged.length} merged`);
+      const formatted = merged.map((s) => {
+        const totalSec = Math.floor(s.startSec);
+        const hours = Math.floor(totalSec / 3600);
+        const minutes = Math.floor(totalSec % 3600 / 60);
+        const seconds = totalSec % 60;
+        if (hours > 0) {
+          return `[${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}] ${s.text}`;
+        }
+        return `[${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}] ${s.text}`;
+      }).join("\n");
+      await this.insertSubtitlesIntoNote(file, content, formatted, videoLineIndex);
+      new import_obsidian12.Notice(`STT \u751F\u6210 ${subtitles.length} \u6761\u5B57\u5E55\uFF08\u5408\u5E76\u4E3A ${merged.length} \u6BB5\uFF09`);
       return;
     }
     if (subtitles.length === 0) {
       new import_obsidian12.Notice("\u8BE5\u89C6\u9891\u6CA1\u6709\u53EF\u7528\u7684\u5B57\u5E55\u3002");
-      return;
     }
-    const merged = this.mergeSubtitleBlocks(subtitles);
-    console.log(`[EME] Subtitles: ${subtitles.length} raw \u2192 ${merged.length} merged`);
-    const formatted = merged.map((s) => {
-      const totalSec = Math.floor(s.startSec);
-      const hours = Math.floor(totalSec / 3600);
-      const minutes = Math.floor(totalSec % 3600 / 60);
-      const seconds = totalSec % 60;
-      if (hours > 0) {
-        return `[${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}] ${s.text}`;
-      }
-      return `[${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}] ${s.text}`;
-    }).join("\n");
-    await this.insertSubtitlesIntoNote(file, content, formatted, videoLineIndex);
-    new import_obsidian12.Notice(`\u5DF2\u4E0B\u8F7D ${subtitles.length} \u6761\u5B57\u5E55\uFF08\u5408\u5E76\u4E3A ${merged.length} \u6BB5\uFF09`);
   }
   /**
    * Merge short subtitle blocks into natural sentence chunks.

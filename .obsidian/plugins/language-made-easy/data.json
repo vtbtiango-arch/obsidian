@@ -94,5 +94,9 @@
   "deviceId": "774e5a63ba7327c0",
   "supabaseUrl": "https://yweosazhyczjqdcjmiti.supabase.co",
   "supabaseKey": "sb_publishable_SNqHPZuOozsQqfGfuJzZiA_lrlCTHK2",
-  "uiStyle": "paper-ink"
+  "uiStyle": "paper-ink",
+  "subtitleMode": "stt",
+  "sttApiKey": "sk-822f87635d5b423190d7714046455b91",
+  "sttModel": "qwen3-asr-flash",
+  "sttLanguage": ""
 }
